@@ -348,7 +348,7 @@ function logTrim(id){
 
 /* ---------- add / edit form ---------- */
 function openForm(id){
-  draft = id? JSON.parse(JSON.stringify(state.horses.find(h=>h.id===id))) : {id:uid(),name:"",breed:"",registered:false,registrationDetail:"",intakeDate:"",intakePrecision:"month",intakeSource:INTAKE_SOURCES[0],savedBy:"",pulledFrom:"",status:STATUSES[0],fosterHome:"",quarantineIn:"",quarantineOut:"",outcomeDate:"",outcomeType:"",outcomeDetail:"",adopter:"",followUpEvery:"",nextFollowUp:"",log:[],notes:""};
+  draft = id? JSON.parse(JSON.stringify(state.horses.find(h=>h.id===id))) : {id:uid(),name:"",breed:"",registered:false,registrationDetail:"",intakeDate:"",intakePrecision:"month",intakeSource:INTAKE_SOURCES[0],savedBy:"",pulledFrom:"",status:STATUSES[0],fosterHome:"",quarantineIn:"",quarantineOut:"",outcomeDate:"",outcomeType:"",outcomeDetail:"",adopter:"",followUpEvery:"",nextFollowUp:"",careNeeds:"",log:[],notes:""};
   if(!draft.log) draft.log=[];
   renderForm();
 }
@@ -386,11 +386,14 @@ function renderForm(){
      ${showFoster?`<label class="f">Foster home<input value="${esc(d.fosterHome)}" oninput="fset('fosterHome',this.value)"></label>`:""}
      ${showAdopt?`<div class="f2"><label class="f">Adopter<input value="${esc(d.adopter)}" oninput="fset('adopter',this.value)"></label><label class="f">Adoption date<input type="date" value="${esc(d.outcomeDate)}" onchange="fset('outcomeDate',this.value)"></label></div>`:""}
      ${showOut&&!showAdopt?`<div class="f2"><label class="f">Outcome date<input type="date" value="${esc(d.outcomeDate)}" onchange="fset('outcomeDate',this.value)"></label><label class="f">Cause / detail<input value="${esc(d.outcomeDetail)}" oninput="fset('outcomeDetail',this.value)"></label></div>`:""}
+     <label class="f">Standing care — feed, meds, vet needs<textarea rows="2" oninput="fset('careNeeds',this.value)" placeholder="e.g. soaked senior feed 2x/day; bute as needed; navicular - corrective trims">${esc(d.careNeeds||"")}</textarea></label>
      ${showLog?`<div class="box"><div class="f2">
          <label class="f">Follow-up every (months)<input type="number" min="0" value="${esc(d.followUpEvery)}" placeholder="3" oninput="fset('followUpEvery',this.value)"></label>
          <label class="f">Next follow-up due<input type="date" value="${esc(d.nextFollowUp)}" onchange="fset('nextFollowUp',this.value)"></label>
-       </div>
-       <h4>Update log</h4>
+       </div><p class="muted sm" style="margin:2px 0 0">Foster/adoption check-ins. Logging a check below moves the next-due date forward.</p></div>`:""}
+     <div class="box">
+       <h4>Care &amp; vet log</h4>
+       <p class="muted sm" style="margin:-2px 0 8px">Farrier, vet, worming, weight, photos — anything dated. Pick the type.</p>
        <div class="logform">
          <div class="f2"><input type="date" id="le-date" value="${todayISO()}"><select id="le-type">${opt(LOG_TYPES,LOG_TYPES[0])}</select></div>
          <input id="le-note" placeholder="Note (what happened)">
@@ -398,8 +401,8 @@ function renderForm(){
          <button class="btn ghost" onclick="addLog()">Log this update</button>
        </div>
        <ul class="timeline">${(d.log||[]).map(logHTML).join("")||'<li class="muted sm">No updates logged yet.</li>'}</ul>
-     </div>`:""}
-     <label class="f">Notes<textarea rows="2" oninput="fset('notes',this.value)" placeholder="Pen/location, medical, anything else">${esc(d.notes)}</textarea></label>
+     </div>
+     <label class="f">Notes<textarea rows="2" oninput="fset('notes',this.value)" placeholder="Pen/location, history, anything else">${esc(d.notes)}</textarea></label>
    </div>
    <div class="ft">${isNew?"":'<button class="btn danger" onclick="delHorse()">Delete</button>'}<div class="spacer"></div><button class="btn ghost" onclick="closeForm()">Cancel</button><button class="btn primary" onclick="saveHorse()">Save</button></div>
    <datalist id="breeds">${BREEDS.map(b=>`<option value="${b}">`).join("")}</datalist>
