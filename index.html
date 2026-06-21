@@ -214,13 +214,16 @@ function render(){
   const a=document.getElementById("app");
   if(view==="report") a.innerHTML=reportHTML();
   else if(view==="herd") a.innerHTML=herdHTML();
+  else if(view==="farrier") a.innerHTML=farrierHTML();
   else a.innerHTML=followHTML();
 }
 function tabsHTML(){
   const od=state?state.horses.filter(h=>["In Custody – Foster","Adopted"].includes(h.status)&&dueState(h.nextFollowUp).tone==="overdue").length:0;
+  const fo=state?farrierData().overdue:0;
   return `<button class="${view==='report'?'on':''}" onclick="view='report';render()">Report</button>
   <button class="${view==='herd'?'on':''}" onclick="view='herd';render()">Herd <span class="pill">${state.horses.length}</span></button>
-  <button class="${view==='followups'?'on':''}" onclick="view='followups';render()">Follow-ups ${od?`<span class="pill warn">${od}</span>`:""}</button>`;
+  <button class="${view==='followups'?'on':''}" onclick="view='followups';render()">Follow-ups ${od?`<span class="pill warn">${od}</span>`:""}</button>
+  <button class="${view==='farrier'?'on':''}" onclick="view='farrier';render()">Farrier ${fo?`<span class="pill warn">${fo}</span>`:""}</button>`;
 }
 function reportHTML(){
   const r=report();
@@ -300,6 +303,47 @@ function followHTML(){
      <span class="rname">${esc(h.name)}</span>
      <span class="rmeta">${h.status==="Adopted"?"Adopter: "+(esc(h.adopter)||"—"):"Foster: "+(esc(h.fosterHome)||"—")}${last?" · last update "+last:" · no updates"}</span>
      </div><span class="due ${due.tone}">${due.label}</span></li>`).join(""):'<div class="empty">No foster or adopted horses yet.</div>'}</ul></main>`;
+}
+
+/* ---------- farrier schedule ---------- */
+function farrierData(){
+  const wk=+(state.settings.farrierWeeks||6);
+  const rows=state.horses.filter(h=>isActive(h)).map(h=>{
+    const dates=(h.log||[]).filter(l=>l.type==="Farrier").map(l=>l.date).filter(Boolean).sort();
+    const last=dates.length?dates[dates.length-1]:null;
+    let next=null;
+    if(last){const d=new Date(last+"T00:00:00");d.setDate(d.getDate()+wk*7);next=d.toISOString().slice(0,10);}
+    const due=last?dueState(next):{label:"No trim logged",tone:"muted",rank:1.5};
+    return {h,last,next,due};
+  }).sort((a,b)=>a.due.rank-b.due.rank||((a.next||"9999")<(b.next||"9999")?-1:1));
+  return {wk,rows,overdue:rows.filter(r=>r.due.tone==="overdue").length};
+}
+function farrierHTML(){
+  const {wk,rows,overdue}=farrierData();
+  return `<main class="wrap">
+   <p class="lead">Hoof-trim schedule for every horse in custody. Set your trim cycle, log each visit, and overdue rises to the top.</p>
+   <div class="periodbar" style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+     <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none">Trim cycle every
+       <input type="number" min="1" style="width:60px" value="${wk}" onchange="state.settings.farrierWeeks=+this.value;save();render()"> weeks</label>
+     <span class="muted sm"><b style="color:var(--clay)">${overdue}</b> overdue</span>
+   </div>
+   <ul class="list">${rows.length?rows.map(farrierRowHTML).join(""):'<div class="empty">No horses in custody.</div>'}</ul>
+  </main>`;
+}
+function farrierRowHTML(r){
+  return `<li class="rowi"><div class="rmain" onclick="openForm('${r.h.id}')">
+     <span class="rname">${esc(r.h.name)}</span>
+     <span class="rmeta">${esc(r.h.breed||'')}${r.last?' · last trim '+r.last:' · no trim logged'}${r.next?' · due '+r.next:''}</span>
+   </div>
+   <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+     <span class="due ${r.due.tone}">${r.due.label}</span>
+     <button class="btn ghost" style="padding:7px 9px;font-size:12px" onclick="event.stopPropagation();logTrim('${r.h.id}')">Trim today</button>
+   </div></li>`;
+}
+function logTrim(id){
+  const h=state.horses.find(x=>x.id===id); if(!h) return;
+  h.log=h.log||[]; h.log.unshift({id:uid(),date:todayISO(),type:"Farrier",note:"Trim logged",photo:""});
+  save(); render(); toast("Logged trim for "+h.name);
 }
 
 /* ---------- add / edit form ---------- */
